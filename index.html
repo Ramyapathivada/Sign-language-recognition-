@@ -4,196 +4,189 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Language Recognition</title>
-    <!-- Tailwind CSS CDN -->
+    <!-- Tailwind CSS CDN for easy styling and responsiveness -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Custom styles for Inter font and general layout */
         body {
-            font-family: "Inter", sans-serif;
-            background-color: #f0f4f8; /* Light gray background */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
         }
-        .container {
-            max-width: 960px;
+        /* Custom styles for the video and canvas to ensure proper display */
+        #videoFeed, #canvasOutput {
             width: 100%;
-            background-color: #ffffff;
-            border-radius: 1rem; /* Rounded corners */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 1.5rem;
-        }
-        video {
-            width: 100%;
-            max-width: 640px; /* Max width for video */
+            max-width: 640px; /* Max width for video/canvas */
             height: auto;
-            background-color: #000;
-            border-radius: 0.75rem; /* Rounded corners for video */
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            transform: scaleX(-1); /* Mirror the video horizontally for natural feel */
+            border-radius: 1rem; /* Rounded corners */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+            background-color: #000; /* Black background for video area */
         }
-        .message-box {
-            background-color: #e0f2fe; /* Light blue */
-            color: #0c4a6e; /* Dark blue text */
-            padding: 1rem;
-            border-radius: 0.5rem;
-            width: 100%;
-            max-width: 640px;
-            text-align: center;
-            font-size: 0.9rem;
-            display: none; /* Hidden by default */
+        /* Hide canvas by default, only show if needed for drawing */
+        #canvasOutput {
+            display: none;
+            border: 2px solid #3b82f6; /* Blue border for canvas */
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1 class="text-3xl font-bold text-gray-800 mb-4">Sign Language Recognition</h1>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl max-w-2xl w-full text-center">
+        <h1 class="text-4xl font-bold text-gray-800 mb-6">Sign Language Recognition</h1>
 
         <!-- Video feed from webcam -->
-        <video id="webcamVideo" autoplay playsinline class="rounded-lg"></video>
-
-        <!-- Placeholder for recognition result -->
-        <div id="recognitionResult" class="text-2xl font-semibold text-green-700 mt-2 mb-4">
-            Waiting for recognition...
+        <div class="mb-6 flex justify-center">
+            <video id="videoFeed" autoplay playsinline class="rounded-xl"></video>
+            <!-- Canvas to potentially draw processed frames or hand landmarks (initially hidden) -->
+            <canvas id="canvasOutput" class="rounded-xl"></canvas>
         </div>
 
-        <!-- Action buttons -->
-        <div class="flex flex-col sm:flex-row gap-4 w-full justify-center">
-            <button id="startButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
+        <!-- Control buttons -->
+        <div class="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+            <button id="startButton"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg
+                           shadow-md transition duration-300 ease-in-out transform hover:scale-105">
                 Start Recognition
             </button>
-            <button id="stopButton" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300" disabled>
+            <button id="stopButton"
+                    class="bg-red-500 hover:bg-red-600 text-white font-semibold py-3 px-6 rounded-lg
+                           shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+                    disabled>
                 Stop Recognition
             </button>
         </div>
 
-        <!-- Message box for user feedback -->
-        <div id="messageBox" class="message-box"></div>
+        <!-- Display area for recognized signs -->
+        <div class="bg-gray-100 p-6 rounded-xl border border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-3">Recognized Sign:</h2>
+            <p id="recognizedSign" class="text-3xl font-bold text-green-700">
+                Waiting for input...
+            </p>
+            <p id="statusMessage" class="text-sm text-gray-500 mt-2">
+                Click 'Start Recognition' to begin.
+            </p>
+        </div>
+
+        <!-- Message box for alerts (instead of alert()) -->
+        <div id="messageBox" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm w-full">
+                <p id="messageBoxText" class="text-lg font-medium text-gray-800 mb-4"></p>
+                <button id="messageBoxClose" class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md">
+                    OK
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
         // Get references to HTML elements
-        const webcamVideo = document.getElementById('webcamVideo');
+        const videoFeed = document.getElementById('videoFeed');
+        const canvasOutput = document.getElementById('canvasOutput');
+        const recognizedSign = document.getElementById('recognizedSign');
+        const statusMessage = document.getElementById('statusMessage');
         const startButton = document.getElementById('startButton');
         const stopButton = document.getElementById('stopButton');
-        const recognitionResult = document.getElementById('recognitionResult');
         const messageBox = document.getElementById('messageBox');
+        const messageBoxText = document.getElementById('messageBoxText');
+        const messageBoxClose = document.getElementById('messageBoxClose');
 
         let stream = null; // To hold the webcam stream
+        let recognitionInterval = null; // To hold the interval for recognition loop
 
-        /**
-         * Displays a message in the message box.
-         * @param {string} message - The message to display.
-         * @param {string} type - 'info', 'success', 'error'.
-         */
-        function showMessage(message, type = 'info') {
-            messageBox.textContent = message;
-            messageBox.style.display = 'block';
-            messageBox.className = 'message-box'; // Reset classes
-
-            if (type === 'info') {
-                messageBox.classList.add('bg-blue-100', 'text-blue-800');
-            } else if (type === 'success') {
-                messageBox.classList.add('bg-green-100', 'text-green-800');
-            } else if (type === 'error') {
-                messageBox.classList.add('bg-red-100', 'text-red-800');
-            }
-
-            // Hide message after 5 seconds
-            setTimeout(() => {
-                messageBox.style.display = 'none';
-            }, 5000);
+        // Function to show a custom message box
+        function showMessageBox(message) {
+            messageBoxText.textContent = message;
+            messageBox.classList.remove('hidden');
         }
 
-        /**
-         * Starts the webcam video stream.
-         */
-        async function startWebcam() {
+        // Event listener for message box close button
+        messageBoxClose.addEventListener('click', () => {
+            messageBox.classList.add('hidden');
+        });
+
+        // Function to start webcam and recognition
+        async function startRecognition() {
             try {
                 // Request access to the user's webcam
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                webcamVideo.srcObject = stream;
-                webcamVideo.play();
+                videoFeed.srcObject = stream;
+                statusMessage.textContent = 'Webcam active. Analyzing hand gestures...';
+                recognizedSign.textContent = 'Detecting...';
 
+                // Enable/disable buttons
                 startButton.disabled = true;
                 stopButton.disabled = false;
-                recognitionResult.textContent = 'Webcam started. Ready for recognition...';
-                showMessage('Webcam started successfully!', 'success');
 
-                // --- Placeholder for ML model loading and prediction loop ---
-                // In a real application, you would load your TensorFlow.js model here.
-                // Example:
-                // const model = await tf.loadLayersModel('path/to/your/model.json');
-                // Then, you would continuously feed frames from the webcamVideo
-                // into the model for prediction.
-                // This typically involves:
-                // 1. Creating a canvas to draw the video frame.
-                // 2. Preprocessing the image (resizing, normalizing pixels).
-                // 3. Running model.predict() on the preprocessed image.
-                // 4. Updating recognitionResult.textContent with the prediction.
-                // This would often be done inside a requestAnimationFrame loop.
-                // For example:
-                /*
-                function predictLoop() {
-                    if (webcamVideo.readyState === webcamVideo.HAVE_ENOUGH_DATA) {
-                        // Create a tensor from the video frame
-                        const img = tf.browser.fromPixels(webcamVideo);
-                        // Preprocess img (e.g., resize, normalize)
-                        // const preprocessedImg = preprocess(img);
-                        // const prediction = model.predict(preprocessedImg);
-                        // Update recognitionResult based on prediction
-                        // recognitionResult.textContent = `Recognized: ${getClassName(prediction)}`;
-                        img.dispose(); // Clean up tensor memory
-                    }
-                    if (stream) { // Continue loop only if stream is active
-                        requestAnimationFrame(predictLoop);
-                    }
-                }
-                // Call predictLoop() after model is loaded
-                // predictLoop();
-                */
-                // -----------------------------------------------------------
+                // Start the recognition loop after the video metadata is loaded
+                videoFeed.onloadedmetadata = () => {
+                    videoFeed.play();
+                    // Set canvas dimensions to match video
+                    canvasOutput.width = videoFeed.videoWidth;
+                    canvasOutput.height = videoFeed.videoHeight;
+                    // Start the recognition process
+                    recognitionInterval = setInterval(performRecognition, 100); // Run every 100ms
+                };
 
             } catch (err) {
                 console.error('Error accessing webcam:', err);
-                recognitionResult.textContent = 'Error: Could not access webcam.';
-                showMessage(`Error accessing webcam: ${err.message}. Please ensure camera permissions are granted.`, 'error');
+                statusMessage.textContent = 'Error: Could not access webcam. Please ensure camera permissions are granted.';
+                recognizedSign.textContent = 'Error!';
+                showMessageBox('Could not access your webcam. Please check camera permissions and try again.');
+                // Ensure buttons are in correct state on error
                 startButton.disabled = false;
                 stopButton.disabled = true;
             }
         }
 
-        /**
-         * Stops the webcam video stream.
-         */
-        function stopWebcam() {
+        // Function to stop webcam and recognition
+        function stopRecognition() {
             if (stream) {
-                stream.getTracks().forEach(track => track.stop()); // Stop all tracks
-                webcamVideo.srcObject = null; // Clear the video source
-                stream = null; // Clear the stream reference
-                startButton.disabled = false;
-                stopButton.disabled = true;
-                recognitionResult.textContent = 'Webcam stopped.';
-                showMessage('Webcam stopped.', 'info');
+                stream.getTracks().forEach(track => track.stop()); // Stop all tracks (video, audio)
+                videoFeed.srcObject = null;
+                stream = null;
+            }
+            if (recognitionInterval) {
+                clearInterval(recognitionInterval); // Stop the recognition loop
+                recognitionInterval = null;
+            }
+            statusMessage.textContent = 'Recognition stopped. Click "Start Recognition" to resume.';
+            recognizedSign.textContent = 'Waiting for input...';
+
+            // Enable/disable buttons
+            startButton.disabled = false;
+            stopButton.disabled = true;
+        }
+
+        // Placeholder function for actual sign language recognition
+        // In a real application, you would integrate a machine learning model here (e.g., TensorFlow.js)
+        function performRecognition() {
+            // This is where you would typically:
+            // 1. Get the current frame from the videoFeed.
+            //    const context = canvasOutput.getContext('2d');
+            //    context.drawImage(videoFeed, 0, 0, canvasOutput.width, canvasOutput.height);
+            //    const imageData = context.getImageData(0, 0, canvasOutput.width, canvasOutput.height);
+
+            // 2. Pass the image data to a pre-trained machine learning model.
+            //    Example (conceptual, requires TensorFlow.js or similar setup):
+            //    const predictions = await model.predict(imageData);
+            //    const recognizedGesture = processPredictions(predictions);
+
+            // For this example, we'll just simulate recognition based on whether the video is playing.
+            if (videoFeed.readyState === videoFeed.HAVE_ENOUGH_DATA) {
+                // Simulate a recognized sign
+                const signs = ["Hello", "Thank You", "Yes", "No", "Love", "Please"];
+                const randomSign = signs[Math.floor(Math.random() * signs.length)];
+                recognizedSign.textContent = randomSign;
+            } else {
+                recognizedSign.textContent = 'Processing...';
             }
         }
 
-        // Event Listeners
-        startButton.addEventListener('click', startWebcam);
-        stopButton.addEventListener('click', stopWebcam);
+        // Event listeners for buttons
+        startButton.addEventListener('click', startRecognition);
+        stopButton.addEventListener('click', stopRecognition);
 
-        // Initial state
-        window.onload = () => {
-            showMessage('Click "Start Recognition" to begin.', 'info');
-        };
+        // Initial state: ensure stop button is disabled
+        stopButton.disabled = true;
     </script>
 </body>
 </html>
