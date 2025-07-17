@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Recognition</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for Inter font and general layout */
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f0f4f8; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            max-width: 960px;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 1rem; /* Rounded corners */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        video {
+            width: 100%;
+            max-width: 640px; /* Max width for video */
+            height: auto;
+            background-color: #000;
+            border-radius: 0.75rem; /* Rounded corners for video */
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            transform: scaleX(-1); /* Mirror the video horizontally for natural feel */
+        }
+        .message-box {
+            background-color: #e0f2fe; /* Light blue */
+            color: #0c4a6e; /* Dark blue text */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            max-width: 640px;
+            text-align: center;
+            font-size: 0.9rem;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Sign Language Recognition</h1>
+
+        <!-- Video feed from webcam -->
+        <video id="webcamVideo" autoplay playsinline class="rounded-lg"></video>
+
+        <!-- Placeholder for recognition result -->
+        <div id="recognitionResult" class="text-2xl font-semibold text-green-700 mt-2 mb-4">
+            Waiting for recognition...
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 w-full justify-center">
+            <button id="startButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
+                Start Recognition
+            </button>
+            <button id="stopButton" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-red-300" disabled>
+                Stop Recognition
+            </button>
+        </div>
+
+        <!-- Message box for user feedback -->
+        <div id="messageBox" class="message-box"></div>
+    </div>
+
+    <script>
+        // Get references to HTML elements
+        const webcamVideo = document.getElementById('webcamVideo');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const recognitionResult = document.getElementById('recognitionResult');
+        const messageBox = document.getElementById('messageBox');
+
+        let stream = null; // To hold the webcam stream
+
+        /**
+         * Displays a message in the message box.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'info', 'success', 'error'.
+         */
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.className = 'message-box'; // Reset classes
+
+            if (type === 'info') {
+                messageBox.classList.add('bg-blue-100', 'text-blue-800');
+            } else if (type === 'success') {
+                messageBox.classList.add('bg-green-100', 'text-green-800');
+            } else if (type === 'error') {
+                messageBox.classList.add('bg-red-100', 'text-red-800');
+            }
+
+            // Hide message after 5 seconds
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 5000);
+        }
+
+        /**
+         * Starts the webcam video stream.
+         */
+        async function startWebcam() {
+            try {
+                // Request access to the user's webcam
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcamVideo.srcObject = stream;
+                webcamVideo.play();
+
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                recognitionResult.textContent = 'Webcam started. Ready for recognition...';
+                showMessage('Webcam started successfully!', 'success');
+
+                // --- Placeholder for ML model loading and prediction loop ---
+                // In a real application, you would load your TensorFlow.js model here.
+                // Example:
+                // const model = await tf.loadLayersModel('path/to/your/model.json');
+                // Then, you would continuously feed frames from the webcamVideo
+                // into the model for prediction.
+                // This typically involves:
+                // 1. Creating a canvas to draw the video frame.
+                // 2. Preprocessing the image (resizing, normalizing pixels).
+                // 3. Running model.predict() on the preprocessed image.
+                // 4. Updating recognitionResult.textContent with the prediction.
+                // This would often be done inside a requestAnimationFrame loop.
+                // For example:
+                /*
+                function predictLoop() {
+                    if (webcamVideo.readyState === webcamVideo.HAVE_ENOUGH_DATA) {
+                        // Create a tensor from the video frame
+                        const img = tf.browser.fromPixels(webcamVideo);
+                        // Preprocess img (e.g., resize, normalize)
+                        // const preprocessedImg = preprocess(img);
+                        // const prediction = model.predict(preprocessedImg);
+                        // Update recognitionResult based on prediction
+                        // recognitionResult.textContent = `Recognized: ${getClassName(prediction)}`;
+                        img.dispose(); // Clean up tensor memory
+                    }
+                    if (stream) { // Continue loop only if stream is active
+                        requestAnimationFrame(predictLoop);
+                    }
+                }
+                // Call predictLoop() after model is loaded
+                // predictLoop();
+                */
+                // -----------------------------------------------------------
+
+            } catch (err) {
+                console.error('Error accessing webcam:', err);
+                recognitionResult.textContent = 'Error: Could not access webcam.';
+                showMessage(`Error accessing webcam: ${err.message}. Please ensure camera permissions are granted.`, 'error');
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+        }
+
+        /**
+         * Stops the webcam video stream.
+         */
+        function stopWebcam() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop()); // Stop all tracks
+                webcamVideo.srcObject = null; // Clear the video source
+                stream = null; // Clear the stream reference
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                recognitionResult.textContent = 'Webcam stopped.';
+                showMessage('Webcam stopped.', 'info');
+            }
+        }
+
+        // Event Listeners
+        startButton.addEventListener('click', startWebcam);
+        stopButton.addEventListener('click', stopWebcam);
+
+        // Initial state
+        window.onload = () => {
+            showMessage('Click "Start Recognition" to begin.', 'info');
+        };
+    </script>
+</body>
+</html>
